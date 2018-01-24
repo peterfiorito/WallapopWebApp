@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <title>Wallapop App</title>
+    <!-- Add bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <!-- Added a font -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">  
+    <!-- Add stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/seachbar.css">
+    <link rel="stylesheet" href="css/productlist.css">
+    <!-- Add favicon -->
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <!-- Include the AngularJS library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>   
+
+  </head>
+  <!-- Define main angularapp -->
+  <body ng-app="WallapopApp">
+  <!-- Define controller -->
+  <div ng-controller="wallCtrl" class="content">
+    <div class="container"> 
+      <div class="row text-center"><img src="wallapop.png"></div>
+      <div class="row search-envelope"> 
+        <div class="col-md-12"> 
+          <!--Main searchbar-->
+                <div class="input-group" id="adv-search"> 
+                    <input id="wallasearch" type="text" class="form-control" placeholder="Search for products" ng-model="query[queryBy]" ng-keyup="quantity = 5" /> 
+                    <div class="input-group-btn"> 
+                        <div class="btn-group" role="group"> 
+                            <div class="dropdown dropdown-lg"> 
+                                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><span class="caret"></span></button> 
+                                <div class="dropdown-menu dropdown-menu-right" role="menu"> 
+                                    <form class="form-horizontal" role="form"> 
+                                      <div class="form-group" ng-model="queryBy"> 
+                                        <label for="filter">Filter by</label> 
+                                        <select class="form-control"> 
+                                            <option value="title" selected>Title</option> 
+                                            <option value="price">Price</option> 
+                                            <option value="email">Email</option> 
+                                            <option value="description">Description</option> 
+                                        </select> 
+                                      </div> 
+                                    </form> 
+                                </div> 
+                            </div>
+                        </div> 
+                    </div> 
+                </div> 
+            </div> 
+        </div> 
+    </div>
+    <!--Included favorite section here show all favourites by clicking on it-->
+    <div class="favorite-list-section" ng-click="showFav()">See my saved favorite list</div>
+    <div ng-show="favouriteList.length == 0 && showIt" class="ml-1">So far it's empty! - click over some products to add them here</div>
+    <div ng-show="favouriteShow">
+      <div>
+      <!--search bar for favorites-->
+        <input id="favsearch" type="text" class="form-control" placeholder="Search through your favorites" ng-model="queryfav[queryByfav]"/>
+        <!-- Displays favorite products-->
+        <div ng-repeat="item in favouriteList | filter:queryfav" ng-click="removeItem(item)" class="card-product favorite-product">
+          <div>{{item.title}}</div>
+          <div><img ng-src="{{item.image}}" alt="Description" /></div>
+        </div>    
+      </div>
+    </div>       
+      <div class="mt-1 ml-2 mr-2 mb-2">
+        <!-- Displays an alert if user tries to add the same product more than once -->
+        <div ng-show="alertAddMessage" ng-click="hideAlert()" class="alert-message mb-2">
+        <span>You already have that product in favorites!<span class="right mr-1">X</span></span></div>
+          <!-- Show search results, up to 5 results -->
+          <table ng-if="query[queryBy]">
+              <tr>
+                  <th class="pd-b-t">Product</th>
+                  <th class="text-center pd-b-t">Description</th>
+                  <th class="pd-b-t">Price</th>
+                  <th class="text-center pd-b-t">Email</th>
+                  <th class="pd-b-t">Image</th>
+              </tr>
+              <tr ng-repeat="prod in products | filter:query | limitTo:quantity" ng-if="query[queryBy]" ng-click="favouriteThis(prod)" class="card-product mb-1 highlight">
+                  <td class="product-title">{{prod.title}}</td>
+                  <td class="text-justify description-cell">{{prod.description}}</td>
+                  <td class="text-center">{{prod.price}}</td>
+                  <td>{{prod.email}}</td>
+                  <td><img ng-src="{{prod.image}}" alt="Description" /></td>
+              </tr>
+          </table>
+      </div>
+      <!-- button to show more results -->
+      <div class="row btn-centered">
+        <input ng-show="query[queryBy]" ng-click="showMore()" class="text-center mb-2 button btn btn-more" value="Show more results!">
+      </div>
+    </div>
+  </body>
+
+  <script>
+    //define app and main controller
+    var WallapopApp = angular.module("WallapopApp",[]);
+    WallapopApp.controller("wallCtrl",function($scope, $http){
+    $scope.query = {}
+    $scope.queryBy = '$'
+    $scope.queryfav = {}
+    $scope.queryByfav = '$'
+    $scope.products = [];
+    $scope.favouriteList = [];
+    $scope.showIt = false;
+    $scope.quantity = 5;
+    $scope.temporal = angular.copy($scope.query);
+    $scope.alertAddMessage = false;
+    
+    //show favorites, initiate testfav to check if it should show the empty list warning or the favorite list
+    $scope.showFav = function(){
+      $scope.showIt = !$scope.showIt;
+      $scope.testfav();
+    };
+
+    $scope.testfav = function(){
+      if($scope.favouriteList.length > 0 && $scope.showIt){
+          $scope.favouriteShow = true;
+      }else if($scope.favouriteList.length == 0 && $scope.showIt){
+        $scope.favouriteShow = false;
+      }else if($scope.favouriteList.length > 0 && !$scope.showIt){
+        $scope.favouriteShow = false;
+      }
+      else{
+        $scope.favouriteShow = false;
+      };
+    };
+
+    //get the data from an API. Emulated a server on localhost with json-server
+    $scope.getData = function(){
+            $http({
+            method : "GET",
+            url : "http://localhost:3000/items"
+            }).then(function mySuccess(response) {
+              $scope.products = response.data;
+
+            }, function myError(response) {
+            $scope.info = response.statusText;
+            });
+          };
+
+    /*Checks if a clicked product is already on the favourite list. 
+    Warns the user the item is already in the list or adds it*/ 
+    $scope.favouriteThis = function (prod) {
+      if($scope.favouriteList.includes(prod)){
+        $scope.alertAddMessage = true;
+      }
+      else{
+      $scope.favouriteList.push(prod);
+      }
+      $scope.testfav();
+      $scope.favouriteShow = true;
+      $scope.showIt = true;
+    };
+
+    //remove items from favourite list
+    $scope.removeItem = function (item) {
+      var index = $scope.favouriteList.indexOf(item);
+
+      if (index > -1) {
+        $scope.favouriteList.splice(index, 1);
+      }
+    };
+
+    //show more results button
+    $scope.showMore = function(){
+      $scope.quantity += 5;
+    };
+    //closes alert message displayed on attempt to add an already favourited product
+    $scope.hideAlert = function(){
+      $scope.alertAddMessage = false;
+    };
+
+    //initiate
+    $scope.getData();
+    $scope.testfav();               
+  });
+  </script>
+  </html>
+   
